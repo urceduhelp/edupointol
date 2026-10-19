@@ -127,18 +127,19 @@ async function eduFetch(path, opt = {}) {
   return r.status === 204 || opt.method && opt.method !== "GET" ? null : r.json();
 }
 
+const normKey = s => String(s).trim().toLowerCase().replace(/\s+/g, " ");
 // ----- glossary (learnX pedia) -----
 async function loadTerms() {
   try {
     const r = await fetch(LX_URL + "/rest/v1/learnX%20pedia?select=word,meaning&limit=5000",
       {headers: {apikey: LX_KEY, Authorization: "Bearer " + LX_KEY}});
     const rows = await r.json();
-    rows.forEach(x => { if (x.word && x.word.trim()) terms[x.word.trim().toLowerCase()] = x; });
+    rows.forEach(x => { if (x.word && x.word.trim()) terms[normKey(x.word)] = x; });
     const words = Object.keys(terms).sort((a, b) => b.length - a.length)
-      .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-    // සිංහල අක්ෂර කොටස් මැදින් කැපීම වළක්වයි
-    const MARK = "\\u0D82\\u0D83\\u0DCA-\\u0DDF\\u0DF2\\u0DF3\\u200D";
-    termRe = words.length ? new RegExp("(?<![" + MARK + "])(?:" + words.join("|") + ")(?![" + MARK + "])", "gi") : null;
+      .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+"));
+    // සම්පූර්ණ වචන පමණක් ගැළපේ: වචනයට පෙර/පසු අකුරක්, පිල්ලමක් හෝ ඉලක්කමක් තිබිය නොහැක
+    const B = "[\\p{L}\\p{M}\\p{N}\\u200D]";
+    termRe = words.length ? new RegExp("(?<!" + B + ")(?:" + words.join("|") + ")(?!" + B + ")", "giu") : null;
   } catch (e) { console.warn("glossary load failed", e); }
 }
 function highlight(text) {
@@ -147,7 +148,7 @@ function highlight(text) {
   termRe.lastIndex = 0;
   while ((m = termRe.exec(text))) {
     out += esc(text.slice(last, m.index)) +
-      `<span class="term" data-w="${esc(m[0].toLowerCase())}">${esc(m[0])}</span>`;
+      `<span class="term" data-w="${esc(normKey(m[0]))}">${esc(m[0])}</span>`;
     last = m.index + m[0].length;
   }
   return out + esc(text.slice(last));

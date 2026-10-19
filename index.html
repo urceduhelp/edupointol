@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edu Point</title>
+<style>
+  :root{--bg:#f6f8fb;--card:#fff;--tx:#1f2937;--mut:#6b7280;--bd:#e5e7eb;--blue:#1d4ed8;--pri:#2563eb}
+  @media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--tx:#e5e7eb;--mut:#94a3b8;--bd:#334155;--blue:#60a5fa;--pri:#3b82f6}}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,"Iskoola Pota","Noto Sans Sinhala",sans-serif;background:var(--bg);color:var(--tx);line-height:1.7}
+  body.lock{overflow:hidden}
+  .wrap{max-width:820px;margin:0 auto;padding:16px}
+  h1{margin:8px 0 16px;font-size:1.6rem}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:16px}
+  input,textarea,select,button{font:inherit;color:inherit;width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--card);margin-bottom:8px}
+  button{background:var(--pri);color:#fff;border:0;cursor:pointer;width:auto;padding:10px 18px}
+  button.sec{background:transparent;color:var(--mut);border:1px solid var(--bd)}
+  button.del{background:#dc2626;padding:4px 10px;font-size:.85rem;margin:0}
+  #main button.item{display:block;width:100%;text-align:left;background:var(--card);color:var(--tx);border:1px solid var(--bd);margin-bottom:6px}
+  #main button.item:hover{border-color:var(--pri)}
+  #main button.unit{font-weight:600}
+  #main .cnt{float:right;color:var(--mut);font-weight:400;font-size:.85rem}
+  #main button.back{background:transparent;color:var(--pri);border:0;padding:4px 0;margin-bottom:4px}
+  .term{color:var(--blue);font-weight:600;cursor:pointer;border-bottom:1px dotted var(--blue)}
+  #tip{position:fixed;z-index:300;max-width:min(320px,90vw);background:var(--card);border:1px solid var(--blue);border-radius:10px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.25);display:none}
+  #tip b{color:var(--blue);display:block;margin-bottom:2px}
+  #modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px}
+  .dlg{position:relative;background:var(--card);border-radius:14px;max-width:640px;width:100%;max-height:85vh;overflow:auto;padding:20px 20px 16px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+  .dlg h3{margin:0 36px 10px 0}
+  .dlg .u{color:var(--mut);font-size:.85rem}
+  .dlg li{margin-bottom:6px}
+  .x{position:absolute;top:10px;right:10px;width:34px;height:34px;padding:0;border-radius:50%;background:var(--bd);color:var(--tx);margin:0}
+  .mut{color:var(--mut);font-size:.9rem}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid var(--bd);padding:6px 0}
+  .g2{display:grid;grid-template-columns:110px 1fr;gap:8px}
+  #msg{color:#dc2626;font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📘 Edu Point</h1>
+
+  <div class="card">
+    <input id="search" placeholder="ප්‍රශ්නයක් සොයන්න…">
+    <div id="main"></div>
+  </div>
+
+  <div class="card">
+    <details id="adminBox">
+      <summary><b>🔐 Admin Log</b></summary>
+      <div id="loginView" style="margin-top:12px">
+        <input id="email" type="email" placeholder="Email" autocomplete="username">
+        <input id="pass" type="password" placeholder="Password" autocomplete="current-password">
+        <button onclick="login()">Login</button>
+      </div>
+      <div id="adminView" style="display:none;margin-top:12px">
+        <div class="g2">
+          <input id="aun" list="unitList" placeholder="අංකය (10:1)">
+          <input id="aunm" placeholder="පාඩම් ඒකකයේ / මාතෘකාවේ නම">
+        </div>
+        <datalist id="unitList"></datalist>
+        <input id="aq" placeholder="ප්‍රශ්නය">
+        <textarea id="ap" rows="6" placeholder="Points (එක පේළියකට එක point බැගින්)"></textarea>
+        <button onclick="save()">Save</button>
+        <button class="sec" onclick="resetForm()">Clear</button>
+        <button class="sec" onclick="logout()">Logout</button>
+
+        <details style="margin-top:12px">
+          <summary><b>📥 Bulk Import (තොග වශයෙන්)</b></summary>
+          <p class="mut">
+            <b>#</b> ලකුණින් ආරම්භ වන පේළියක් මාතෘකාවක් වේ: <code># 10:1 ඉතිහාසය හැදෑරීමේ මූලාශ්‍රය</code><br>
+            ඉන් පසු ප්‍රශ්න එක පේළියට එකක් බැගින් ද, ඒවායේ පහළින් <b>·</b> (හෝ • - *) ලකුණු සහිත points ද එන්න. මාතෘකා කිහිපයක් එකම තොගයේ දැමිය හැක. # පේළියක් නොමැති නම් පහත අංකය/නම සියලු ප්‍රශ්නවලට යෙදේ.
+          </p>
+          <div class="g2">
+            <input id="bun" placeholder="අංකය (විකල්ප)">
+            <input id="bunm" placeholder="මාතෘකාවේ නම (විකල්ප)">
+          </div>
+          <textarea id="bulk" rows="12" placeholder="# 10:1 ඉතිහාසය හැදෑරීමේ මූලාශ්‍රය&#10;ප්‍රශ්නය 1...&#10;· point 1&#10;· point 2&#10;ප්‍රශ්නය 2...&#10;· point 1"></textarea>
+          <select id="bulkMode">
+            <option value="update">දැනටමත් ඇති ප්‍රශ්න update කරන්න</option>
+            <option value="skip">දැනටමත් ඇති ප්‍රශ්න මඟහරින්න</option>
+          </select>
+          <button class="sec" onclick="bulkPreview()">Preview</button>
+          <button onclick="bulkImport()">Import</button>
+          <div id="bulkInfo" class="mut" style="margin-top:8px"></div>
+        </details>
+
+        <div id="adminList" style="margin-top:12px"></div>
+      </div>
+      <div id="msg"></div>
+    </details>
+  </div>
+</div>
+
+<div id="modal">
+  <div class="dlg">
+    <button class="x" onclick="closeQ()" aria-label="වසන්න">✕</button>
+    <div class="u" id="mu"></div>
+    <h3 id="mq"></h3>
+    <ol id="mp"></ol>
+  </div>
+</div>
+<div id="tip"></div>
+
+<script>
+// ===== Edu Point DB =====
+const EDU_URL = "https://jcijglwpkfluyzrltimk.supabase.co";
+const EDU_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaWpnbHdwa2ZsdXl6cmx0aW1rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4MzU3OTUsImV4cCI6MjA4MjQxMTc5NX0.dvT8OiyVEiYn_DhkMakmSq1Vvr4REDr0kYPnyqCtWHs";
+// ===== learnX pedia DB (වචන + අර්ථ) =====
+const LX_URL = "https://uqgzlaxsnknheoerbfus.supabase.co";
+const LX_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxZ3psYXhzbmtuaGVvZXJiZnVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5MjM2MTUsImV4cCI6MjA3OTI4MzYxNX0.IYWZ7ukx8J-GJMWy7cMk2BWnmzJmJjjE93yEmJie7nQ";
+
+let items = [], terms = {}, termRe = null, token = null, editId = null, openUnit = null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function eduFetch(path, opt = {}) {
+  const r = await fetch(EDU_URL + path, {...opt, headers: {
+    apikey: EDU_KEY, Authorization: "Bearer " + (token || EDU_KEY),
+    "Content-Type": "application/json", Prefer: "return=minimal", ...(opt.headers || {})}});
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).message || r.statusText);
+  return r.status === 204 || opt.method && opt.method !== "GET" ? null : r.json();
+}
+
+// ----- glossary (learnX pedia) -----
+async function loadTerms() {
+  try {
+    const r = await fetch(LX_URL + "/rest/v1/learnX%20pedia?select=word,meaning&limit=5000",
+      {headers: {apikey: LX_KEY, Authorization: "Bearer " + LX_KEY}});
+    const rows = await r.json();
+    rows.forEach(x => { if (x.word && x.word.trim()) terms[x.word.trim().toLowerCase()] = x; });
+    const words = Object.keys(terms).sort((a, b) => b.length - a.length)
+      .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    // සිංහල අක්ෂර කොටස් මැදින් කැපීම වළක්වයි
+    const MARK = "\\u0D82\\u0D83\\u0DCA-\\u0DDF\\u0DF2\\u0DF3\\u200D";
+    termRe = words.length ? new RegExp("(?<![" + MARK + "])(?:" + words.join("|") + ")(?![" + MARK + "])", "gi") : null;
+  } catch (e) { console.warn("glossary load failed", e); }
+}
+function highlight(text) {
+  if (!termRe) return esc(text);
+  let out = "", last = 0, m;
+  termRe.lastIndex = 0;
+  while ((m = termRe.exec(text))) {
+    out += esc(text.slice(last, m.index)) +
+      `<span class="term" data-w="${esc(m[0].toLowerCase())}">${esc(m[0])}</span>`;
+    last = m.index + m[0].length;
+  }
+  return out + esc(text.slice(last));
+}
+document.addEventListener("click", e => {
+  const t = e.target.closest(".term"), tip = $("tip");
+  if (!t) { tip.style.display = "none"; return; }
+  const d = terms[t.dataset.w]; if (!d) return;
+  tip.innerHTML = `<b>${esc(d.word)}</b>${esc(d.meaning || "අර්ථයක් නොමැත")}`;
+  tip.style.display = "block";
+  const r = t.getBoundingClientRect();
+  tip.style.left = Math.max(8, Math.min(r.left, innerWidth - tip.offsetWidth - 8)) + "px";
+  const below = r.bottom + 6 + tip.offsetHeight < innerHeight;
+  tip.style.top = (below ? r.bottom + 6 : r.top - tip.offsetHeight - 6) + "px";
+});
+
+// ----- units / questions -----
+const natKey = s => (s || "").split(/[^0-9]+/).filter(Boolean).map(Number);
+function natCmp(a, b) {
+  const x = natKey(a), y = natKey(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] ?? -1) - (y[i] ?? -1); if (d) return d; }
+  return (a || "").localeCompare(b || "");
+}
+function groups() {
+  const m = new Map();
+  items.forEach(i => {
+    const k = i.unit_no || "";
+    if (!m.has(k)) m.set(k, {no: k, name: "", qs: []});
+    const g = m.get(k); if (!g.name && i.unit_name) g.name = i.unit_name; g.qs.push(i);
+  });
+  return [...m.values()].sort((a, b) => !a.no ? 1 : !b.no ? -1 : natCmp(a.no, b.no));
+}
+const unitLabel = g => g.no ? (g.no + " " + g.name).trim() : "වෙනත්";
+const qBtn = (i, sub) => `<button class="item" data-q="${i.id}">${sub ? `<span class="mut">${esc(sub)}</span><br>` : ""}${highlight(i.question)}</button>`;
+
+async function loadItems() {
+  try {
+    items = await eduFetch("/rest/v1/edu_points?select=*&order=id.asc");
+    render(); renderAdminList();
+  } catch (e) { $("main").innerHTML = `<span class="mut">දත්ත ලබාගත නොහැක: ${esc(e.message)}</span>`; }
+}
+function render() {
+  const s = $("search").value.trim().toLowerCase(), gs = groups();
+  let h = "";
+  if (s) {
+    const f = items.filter(i => i.question.toLowerCase().includes(s));
+    h = f.length ? f.map(i => qBtn(i, unitLabel({no: i.unit_no || "", name: i.unit_name || ""}))).join("") : `<span class="mut">ප්‍රශ්න හමු නොවීය</span>`;
+  } else if (openUnit === null) {
+    h = gs.length ? gs.map(g => `<button class="item unit" data-u="${esc(g.no)}">${esc(unitLabel(g))}<span class="cnt">${g.qs.length}</span></button>`).join("")
+      : `<span class="mut">තවම මාතෘකා නොමැත</span>`;
+  } else {
+    const g = gs.find(x => x.no === openUnit);
+    h = `<button class="back" id="back">← මාතෘකා වෙත</button><h3 style="margin:4px 0 10px">${esc(g ? unitLabel(g) : "")}</h3>` +
+      (g ? g.qs.map(i => qBtn(i)).join("") : "");
+  }
+  $("main").innerHTML = h;
+}
+$("main").addEventListener("click", e => {
+  if (e.target.closest(".term")) return; // අර්ථය පමණක් පෙන්වයි
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.u !== undefined) { openUnit = b.dataset.u; render(); window.scrollTo({top: 0}); }
+  else if (b.id === "back") { openUnit = null; render(); }
+  else if (b.dataset.q) openQ(+b.dataset.q);
+});
+$("search").addEventListener("input", render);
+
+// ----- popup -----
+function openQ(id) {
+  const it = items.find(i => i.id === id); if (!it) return;
+  $("mu").textContent = it.unit_no ? (it.unit_no + " " + (it.unit_name || "")).trim() : "";
+  $("mq").innerHTML = highlight(it.question);
+  $("mp").innerHTML = it.points.split("\n").map(p => p.trim()).filter(Boolean).map(p => `<li>${highlight(p)}</li>`).join("");
+  $("modal").style.display = "flex"; document.body.classList.add("lock");
+  $("modal").querySelector(".dlg").scrollTop = 0;
+}
+function closeQ() { $("modal").style.display = "none"; $("tip").style.display = "none"; document.body.classList.remove("lock"); }
+$("modal").addEventListener("click", e => { if (e.target === $("modal")) closeQ(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeQ(); });
+
+// ----- admin -----
+const setMsg = (t, ok) => { $("msg").style.color = ok ? "#16a34a" : "#dc2626"; $("msg").textContent = t || ""; };
+function setAuthUI() {
+  $("loginView").style.display = token ? "none" : "block";
+  $("adminView").style.display = token ? "block" : "none";
+}
+async function login() {
+  setMsg("");
+  try {
+    const r = await fetch(EDU_URL + "/auth/v1/token?grant_type=password", {method: "POST",
+      headers: {apikey: EDU_KEY, "Content-Type": "application/json"},
+      body: JSON.stringify({email: $("email").value.trim(), password: $("pass").value})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error_description || d.msg || "Login failed");
+    token = d.access_token; sessionStorage.setItem("edu_token", token);
+    $("pass").value = ""; setAuthUI(); renderAdminList();
+  } catch (e) { setMsg(e.message); }
+}
+function logout() { token = null; sessionStorage.removeItem("edu_token"); setAuthUI(); }
+
+$("aun").addEventListener("change", () => {
+  const g = groups().find(x => x.no === $("aun").value.trim());
+  if (g && !$("aunm").value.trim()) $("aunm").value = g.name;
+});
+async function save() {
+  const question = $("aq").value.trim(), points = $("ap").value.trim();
+  const unit_no = $("aun").value.trim() || null, unit_name = $("aunm").value.trim() || null;
+  if (!question || !points) return setMsg("ප්‍රශ්නය සහ points දෙකම පුරවන්න");
+  const body = JSON.stringify({unit_no, unit_name, question, points});
+  try {
+    if (editId) await eduFetch("/rest/v1/edu_points?id=eq." + editId, {method: "PATCH", body});
+    else await eduFetch("/rest/v1/edu_points", {method: "POST", body});
+    setMsg("Save විය ✔", true); resetForm(); loadItems();
+  } catch (e) { setMsg(e.message.includes("duplicate") ? "මෙම ප්‍රශ්නය දැනටමත් ඇත" : e.message); }
+}
+function resetForm() { editId = null; ["aq", "ap"].forEach(i => $(i).value = ""); }
+function edit(id) {
+  const it = items.find(i => i.id === id);
+  editId = id; $("aun").value = it.unit_no || ""; $("aunm").value = it.unit_name || "";
+  $("aq").value = it.question; $("ap").value = it.points; $("aq").focus();
+}
+async function del(id) {
+  if (!confirm("මකන්නද?")) return;
+  try { await eduFetch("/rest/v1/edu_points?id=eq." + id, {method: "DELETE"}); loadItems(); }
+  catch (e) { setMsg(e.message); }
+}
+function renderAdminList() {
+  $("unitList").innerHTML = groups().filter(g => g.no).map(g => `<option value="${esc(g.no)}">${esc(g.name)}</option>`).join("");
+  $("adminList").innerHTML = items.slice().sort((a, b) => natCmp(a.unit_no, b.unit_no) || a.id - b.id).map(i =>
+    `<div class="row"><span><span class="mut">${esc(i.unit_no || "-")}</span> ${esc(i.question)}</span>
+    <span style="white-space:nowrap"><button class="sec" style="margin:0 4px 0 0;padding:4px 10px" onclick="edit(${i.id})">Edit</button>
+    <button class="del" onclick="del(${i.id})">Delete</button></span></div>`).join("");
+}
+
+// ----- bulk import -----
+const BULLET = /^\s*[·•●▪‣◦\-–—*]\s*/;
+function parseBulk(text) {
+  const rows = [], warn = [];
+  let unit = {no: $("bun").value.trim() || null, name: $("bunm").value.trim() || null}, cur = null;
+  text.replace(/\r/g, "").split("\n").forEach(raw => {
+    const line = raw.trim();
+    if (!line) return;
+    if (line.startsWith("#")) {
+      const m = line.replace(/^#+\s*/, "").match(/^(\S+)\s*(.*)$/);
+      if (m) unit = {no: m[1], name: m[2].trim() || null};
+      cur = null;
+    } else if (BULLET.test(raw)) {
+      const p = line.replace(BULLET, "").trim();
+      if (!p) return;
+      if (cur) cur.pts.push(p); else warn.push("ප්‍රශ්නයකට පෙර point එකක්: " + p.slice(0, 30));
+    } else {
+      cur = {question: line, pts: [], unit_no: unit.no, unit_name: unit.name};
+      rows.push(cur);
+    }
+  });
+  const map = new Map();
+  rows.forEach(r => {
+    if (!r.pts.length) { warn.push("points නැත (මඟහැරිණි): " + r.question.slice(0, 40)); return; }
+    if (map.has(r.question)) warn.push("අනුපිටපත (අවසාන එක භාවිත වේ): " + r.question.slice(0, 40));
+    map.set(r.question, {unit_no: r.unit_no, unit_name: r.unit_name, question: r.question, points: r.pts.join("\n")});
+  });
+  return {data: [...map.values()], warn};
+}
+function bulkPreview() {
+  const {data, warn} = parseBulk($("bulk").value);
+  const us = new Set(data.map(d => d.unit_no || ""));
+  $("bulkInfo").innerHTML = `මාතෘකා <b>${us.size}</b>ක්, ප්‍රශ්න <b>${data.length}</b>ක් (points ${data.reduce((a, d) => a + d.points.split("\n").length, 0)}).` +
+    (warn.length ? "<br>⚠ " + warn.slice(0, 10).map(esc).join("<br>⚠ ") + (warn.length > 10 ? `<br>… තවත් ${warn.length - 10}ක්` : "") : "");
+}
+async function bulkImport() {
+  const {data, warn} = parseBulk($("bulk").value);
+  if (!data.length) return $("bulkInfo").textContent = "Import කිරීමට දත්ත නැත";
+  const prefer = "return=minimal,resolution=" + ($("bulkMode").value === "skip" ? "ignore" : "merge") + "-duplicates";
+  let done = 0;
+  try {
+    for (let i = 0; i < data.length; i += 200) {
+      const chunk = data.slice(i, i + 200);
+      await eduFetch("/rest/v1/edu_points?on_conflict=question", {method: "POST", headers: {Prefer: prefer}, body: JSON.stringify(chunk)});
+      done += chunk.length;
+      $("bulkInfo").textContent = `Import වෙමින්… ${done}/${data.length}`;
+    }
+    $("bulkInfo").textContent = `✔ ප්‍රශ්න ${done}ක් සාර්ථකව Import විය` + (warn.length ? ` (අවවාද ${warn.length}ක්)` : "");
+    $("bulk").value = ""; loadItems();
+  } catch (e) { $("bulkInfo").textContent = `❌ ${e.message} (සාර්ථක වූ ගණන: ${done})`; }
+}
+
+token = sessionStorage.getItem("edu_token"); setAuthUI();
+loadTerms().then(loadItems);
+</script>
+</body>
+</html>
